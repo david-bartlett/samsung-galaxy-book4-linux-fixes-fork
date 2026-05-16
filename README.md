@@ -183,6 +183,7 @@ The Galaxy Book4/5 laptops have built-in dual array digital microphones (DMIC). 
 - **Samsung Galaxy Book5 Pro 360 (960QHA)** — Arch Linux, kernel 6.19.9, webcam fix confirmed (community-confirmed, [#22](https://github.com/Andycodeman/samsung-galaxy-book-linux-fixes/issues/22))
 - **Samsung Galaxy Book3 Pro 360 (960QFG)** — Ubuntu 24.04, webcam rotation fix confirmed (community-confirmed, [#17](https://github.com/Andycodeman/samsung-galaxy-book-linux-fixes/issues/17))
 - **Samsung Galaxy Book3 Pro 14" (NP940XFG-KC1US)** — Ubuntu 26.04, kernel 7.0.0-14-generic, [`speaker-fix-940xfg/`](speaker-fix-940xfg/) confirmed full stereo from internal speakers (community-confirmed, [#44](https://github.com/Andycodeman/samsung-galaxy-book-linux-fixes/issues/44))
+- **Samsung Galaxy Book4 Pro (NP940XGK, subsystem 0x144dca07)** — Zorin OS 18.1, kernel 6.17.0-23-generic, speaker fix confirmed (community-confirmed, [#53](https://github.com/Andycodeman/samsung-galaxy-book-linux-fixes/issues/53))
 
 The upstream speaker PR (#5616) was also confirmed working on Galaxy Book4 Pro, Pro 360, and Book4 Pro 16-inch by other users, so this fix should work on those models too. If you try it on another model or distro, please report back.
 

@@ -28,6 +28,7 @@ Samsung Galaxy Book4 laptops using **MAX98390 speaker amplifiers** have no audio
 - Samsung Galaxy Book4 Ultra — Ubuntu 24.04 LTS, Kernel 6.17.0-14-generic (HWE)
 - Samsung Galaxy Book4 Ultra — Fedora 43, Kernel 6.18.9 (community-confirmed)
 - Samsung Galaxy Book5 Pro — Speaker fix works, mic continues to work (community-confirmed)
+- Samsung Galaxy Book4 Pro (NP940XGK, subsystem 0x144dca07) — Zorin OS 18.1, Kernel 6.17.0-23-generic (community-confirmed, [#53](https://github.com/Andycodeman/samsung-galaxy-book-linux-fixes/issues/53))
 
 The upstream PR was also reported working on Galaxy Book4 Pro, Pro 360, and Pro 16-inch by other users — this fix should work on those models too.
 
