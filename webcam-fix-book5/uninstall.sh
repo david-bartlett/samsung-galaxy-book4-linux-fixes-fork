@@ -185,6 +185,18 @@ if [[ -f /etc/modprobe.d/99-camera-relay-loopback.conf ]] && \
         sudo dracut --regenerate-all -f 2>/dev/null || true
     fi
 fi
+# Restore the Intel OEM v4l2-relayd stack if install.sh neutralized it (issue #54)
+if [[ -f /etc/modprobe.d/v4l2loopback.conf.disabled-by-camera-relay ]]; then
+    sudo mv -f /etc/modprobe.d/v4l2loopback.conf.disabled-by-camera-relay \
+        /etc/modprobe.d/v4l2loopback.conf
+    echo "  ✓ Restored Intel OEM /etc/modprobe.d/v4l2loopback.conf"
+fi
+if systemctl is-enabled v4l2-relayd.service 2>/dev/null | grep -q masked \
+   || [[ -L /etc/systemd/system/v4l2-relayd.service ]]; then
+    sudo systemctl unmask v4l2-relayd.service 2>/dev/null || true
+    sudo systemctl enable v4l2-relayd.service 2>/dev/null || true
+    echo "  ✓ Restored (unmasked + re-enabled) v4l2-relayd.service"
+fi
 echo "  ✓ Camera relay tool removed"
 
 # [11/11] Remove environment configs

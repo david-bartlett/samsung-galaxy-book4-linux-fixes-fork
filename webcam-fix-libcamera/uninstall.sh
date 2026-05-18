@@ -30,6 +30,18 @@ sudo rm -f /usr/local/bin/camera-relay
 sudo rm -f /usr/local/bin/camera-relay-monitor
 sudo rm -f /etc/modprobe.d/99-camera-relay-loopback.conf
 sudo rm -f /etc/modules-load.d/v4l2loopback.conf
+# Restore the Intel OEM v4l2-relayd stack if install.sh neutralized it (issue #54)
+if [[ -f /etc/modprobe.d/v4l2loopback.conf.disabled-by-camera-relay ]]; then
+    sudo mv -f /etc/modprobe.d/v4l2loopback.conf.disabled-by-camera-relay \
+        /etc/modprobe.d/v4l2loopback.conf
+    echo "  ✓ Restored Intel OEM /etc/modprobe.d/v4l2loopback.conf"
+fi
+if systemctl is-enabled v4l2-relayd.service 2>/dev/null | grep -q masked \
+   || [[ -L /etc/systemd/system/v4l2-relayd.service ]]; then
+    sudo systemctl unmask v4l2-relayd.service 2>/dev/null || true
+    sudo systemctl enable v4l2-relayd.service 2>/dev/null || true
+    echo "  ✓ Restored (unmasked + re-enabled) v4l2-relayd.service"
+fi
 sudo rm -rf /usr/local/share/camera-relay
 sudo rm -f /usr/share/applications/camera-relay-systray.desktop
 sudo rm -f /etc/xdg/autostart/camera-relay-systray.desktop

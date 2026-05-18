@@ -279,6 +279,32 @@ camera-relay enable-persistent --yes  # if not enabled
 
 If the camera still doesn't appear, you can try enabling `chrome://flags/#enable-webrtc-pipewire-camera` — but note this flag can break camera access in some browsers (especially Edge). Disable it if it causes problems.
 
+### Black screen in apps / "v4l2loopback ... não é um dispositivo de saída"
+
+On Ubuntu/Zorin (Noble base) the pre-installed **Intel OEM camera stack**
+(`v4l2-relayd` + `ipu6-camera-*`) ships its own
+`/etc/modprobe.d/v4l2loopback.conf` with `exclusive_caps=1
+card_label="Intel MIPI Camera"` and an enabled `v4l2-relayd.service` that
+loads v4l2loopback at boot. Because modprobe.d files merge in lexical order
+and the **last** value of a duplicate key wins, that file overrides the
+relay's `99-camera-relay-loopback.conf`, so the loopback comes up
+**capture-only** (no `VIDEO_OUTPUT`). GStreamer's `v4l2sink` then can't write
+into it and apps show a black screen, often with
+`O dispositivo "/dev/videoN" não é um dispositivo de saída`.
+
+Check for it:
+```bash
+lsmod | grep v4l2loopback
+cat /sys/module/v4l2loopback/parameters/exclusive_caps   # Y = wrong
+systemctl status v4l2-relayd
+```
+
+The installer now detects and **neutralizes** this automatically — it stops,
+disables and masks `v4l2-relayd.service` and moves the OEM
+`/etc/modprobe.d/v4l2loopback.conf` aside (restored by `uninstall.sh`). Just
+re-run `sudo bash install.sh` and reboot. The change is fully reversible:
+`uninstall.sh` restores the OEM file and re-enables the service.
+
 ### Desaturated, green-tinted or purple image (colour tuning)
 
 The bundled `ov02c10.yaml` ships a conservative colour-correction matrix (CCM).

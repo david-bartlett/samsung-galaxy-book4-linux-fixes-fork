@@ -84,6 +84,47 @@ loudly with the build log instead of a false success, and (c) tells them
 exactly which driver is winning and what to do next. The `clk_freq` noise that
 made the report look like a parameter issue is removed at its source.
 
+## Phase 2 — relay/loopback collision (after the driver fix worked)
+
+The reporter confirmed the 26 MHz DKMS module now wins (`/updates/dkms/`),
+libcamera 0.7.0 has the OV02C10 helper, and `cam -l` / `cam --capture`
+produce real frames — the **hardware + driver + libcamera side is solved**.
+The remaining failure is purely the camera relay: black screen in apps,
+GStreamer `O dispositivo "/dev/video99" não é um dispositivo de saída`,
+`Capabilities: 0x5200001` (no `VIDEO_OUTPUT` bit), `v4l2loopback` loaded with
+label `"Intel MIPI Camera"`.
+
+**Confirmed root cause (his diagnostics):** Zorin/Noble ships the Intel OEM
+camera stack — `v4l2-relayd 0.1.2-0ubuntu3.1` + `gstreamer1.0-icamera` +
+`libcamhal*`. It installs `/etc/modprobe.d/v4l2loopback.conf`
+(`exclusive_caps=1 card_label="Intel MIPI Camera"`) and an enabled
+`v4l2-relayd.service` that autoloads v4l2loopback at boot. modprobe.d merges
+in lexical order and the **last** duplicate-key value wins, so
+`v4l2loopback.conf` overrides `99-camera-relay-loopback.conf` → loopback is
+capture-only → `v4l2sink` can't write → black screen. His installed
+`99-camera-relay-loopback.conf` was also a stale/foreign file
+(`video_nr=99 card_label=VirtualCamera exclusive_caps=1`), not the current
+repo's correct `exclusive_caps=0 card_label="Camera Relay"`.
+
+**Phase-2 fix implemented (working tree):**
+
+- `webcam-fix-libcamera/install.sh` and `webcam-fix-book5/install.sh` — before
+  deploying our v4l2loopback config, detect the OEM `v4l2-relayd` stack and
+  neutralize it: stop + disable + **mask** `v4l2-relayd.service`, and move the
+  OEM `/etc/modprobe.d/v4l2loopback.conf` aside to
+  `…conf.disabled-by-camera-relay` (only when it's the OEM file, never ours).
+  The unconditional `cp` of the repo config then also corrects any stale
+  `exclusive_caps=1`/`VirtualCamera` file from older installs, and the existing
+  "wrong label → reload" block reloads v4l2loopback so the fix takes effect
+  without a reboot.
+- `webcam-fix-libcamera/uninstall.sh` and `webcam-fix-book5/uninstall.sh` —
+  restore the OEM `v4l2loopback.conf` and unmask/re-enable
+  `v4l2-relayd.service` (fully reversible).
+- `webcam-fix-libcamera/README.md` — new "Black screen / não é um dispositivo
+  de saída" troubleshooting section.
+
+Shipped in **v0.3.49**.
+
 ## Diagnostics requested from the reporter
 
 Posted on the issue: `sudo mokutil --sb-state`, `modinfo ov02c10 | grep

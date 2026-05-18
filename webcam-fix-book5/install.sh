@@ -865,8 +865,56 @@ if [[ -d "$RELAY_DIR" ]]; then
         fi
     fi
 
+    # ---------------------------------------------------------------
+    # Neutralize the Intel OEM "v4l2-relayd" camera stack if present.
+    #
+    # On Ubuntu/Zorin (Noble base) the pre-installed Intel IPU6 OEM
+    # stack ships its own /etc/modprobe.d/v4l2loopback.conf with
+    # `exclusive_caps=1 card_label="Intel MIPI Camera"` plus an enabled
+    # v4l2-relayd.service that auto-loads v4l2loopback at boot. modprobe.d
+    # files are merged in lexical order and the LAST value of a duplicate
+    # key wins, so "v4l2loopback.conf" overrides our
+    # "99-camera-relay-loopback.conf" — the loopback comes up
+    # capture-only (no VIDEO_OUTPUT), GStreamer's v4l2sink can't write
+    # into it, and the relay shows a black screen. (issue #54)
+    # ---------------------------------------------------------------
+    OEM_V4L2_CONF="/etc/modprobe.d/v4l2loopback.conf"
+    if systemctl list-unit-files 2>/dev/null | grep -q '^v4l2-relayd\.service' \
+       || { [[ -f "$OEM_V4L2_CONF" ]] \
+            && grep -q 'Intel MIPI Camera' "$OEM_V4L2_CONF" 2>/dev/null \
+            && ! grep -q 'Camera Relay' "$OEM_V4L2_CONF" 2>/dev/null; }; then
+        echo "  ⚠ Detected the Intel OEM 'v4l2-relayd' camera stack — it"
+        echo "    grabs v4l2loopback at boot with exclusive_caps=1, which"
+        echo "    breaks the camera relay. Neutralizing it (reversible via"
+        echo "    uninstall.sh)."
+
+        # Stop, disable and mask the competing service so it can't
+        # re-load v4l2loopback with its own options or hold the device.
+        if systemctl list-unit-files 2>/dev/null | grep -q '^v4l2-relayd\.service'; then
+            sudo systemctl stop v4l2-relayd.service 2>/dev/null || true
+            sudo systemctl disable v4l2-relayd.service 2>/dev/null || true
+            sudo systemctl mask v4l2-relayd.service 2>/dev/null || true
+            sleep 1
+            echo "    ✓ v4l2-relayd.service stopped, disabled and masked"
+        fi
+
+        # Move the OEM modprobe.d file aside (only if it's the OEM one,
+        # not ours) so our 99-camera-relay-loopback.conf is the only
+        # `options v4l2loopback` line and reliably wins.
+        if [[ -f "$OEM_V4L2_CONF" ]] \
+           && grep -q 'Intel MIPI Camera' "$OEM_V4L2_CONF" 2>/dev/null \
+           && ! grep -q 'Camera Relay' "$OEM_V4L2_CONF" 2>/dev/null; then
+            sudo mv -f "$OEM_V4L2_CONF" \
+                "${OEM_V4L2_CONF}.disabled-by-camera-relay"
+            echo "    ✓ Moved $OEM_V4L2_CONF aside"
+            echo "      (restored on uninstall from"
+            echo "       ${OEM_V4L2_CONF}.disabled-by-camera-relay)"
+        fi
+    fi
+
     # Deploy v4l2loopback config (always overwrite — Fedora's v4l2loopback-akmods
-    # can drop its own config that overrides ours, causing wrong card_label)
+    # can drop its own config that overrides ours, causing wrong card_label;
+    # also fixes stale exclusive_caps=1 configs from older installs — issue #54)
     sudo cp "$RELAY_DIR/99-camera-relay-loopback.conf" /etc/modprobe.d/
     echo "  ✓ Installed v4l2loopback config (/etc/modprobe.d/99-camera-relay-loopback.conf)"
 
