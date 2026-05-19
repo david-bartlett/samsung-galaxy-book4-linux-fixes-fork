@@ -125,6 +125,37 @@ repo's correct `exclusive_caps=0 card_label="Camera Relay"`.
 
 Shipped in **v0.3.49**.
 
+## Phase 3 — Chrome can't see the relay (udev ID_V4L_CAPABILITIES)
+
+After v0.3.49 the reporter confirmed: relay **STREAMING**, Cheese works
+perfectly, PipeWire flag disabled, `--no-sandbox` tried — but Chrome/Meet
+still "camera not found" and never even triggers the relay.
+
+**Root cause:** Chromium's `VideoCaptureDeviceFactoryV4L2` enumerates cameras
+via **udev**, not by scanning `/dev/video*`, and filters to devices whose
+`ID_V4L_CAPABILITIES` udev property contains `:capture:`. That property is set
+**once** by `v4l_id` from `60-persistent-v4l.rules` at device-creation time —
+while the relay monitor holds the writer fd and no capture format is
+negotiated yet — so it can come up without `:capture:` and is never refreshed
+when the relay later streams. Chrome therefore filters the loopback out
+permanently. libcamera/PipeWire apps (Cheese, Firefox) don't use that udev
+property, which is exactly why they work while Chrome stays blind.
+
+**Phase-3 fix implemented (working tree):**
+
+- `webcam-fix-libcamera/install.sh` + `webcam-fix-book5/install.sh` — install
+  `/etc/udev/rules.d/70-camera-relay-capabilities.rules`:
+  `SUBSYSTEM=="video4linux", ATTR{name}=="Camera Relay",
+  ENV{ID_V4L_CAPABILITIES}=":capture:"` (sorts after `60-persistent-v4l`),
+  then `udevadm control --reload-rules` + `trigger`.
+- Both `uninstall.sh` — remove the rule.
+- `webcam-fix-libcamera/README.md` — "Chromium browser doesn't show camera"
+  rewritten: keep the PipeWire flag DISABLED on Zorin/Ubuntu, explains the
+  udev-capabilities filter, the `udevadm info` check, and the need to fully
+  `pkill -9 -f chrome` before relaunch.
+
+Shipped in **v0.3.50**.
+
 ## Diagnostics requested from the reporter
 
 Posted on the issue: `sudo mokutil --sb-state`, `modinfo ov02c10 | grep

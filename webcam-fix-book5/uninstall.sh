@@ -98,6 +98,7 @@ echo "  ✓ Module autoload configuration removed"
 # [6/11] Remove udev rules (including legacy hide rule from earlier versions)
 echo "[6/11] Removing udev rules..."
 sudo rm -f /etc/udev/rules.d/90-hide-ipu7-v4l2.rules
+sudo rm -f /etc/udev/rules.d/70-camera-relay-capabilities.rules
 sudo udevadm control --reload-rules 2>/dev/null || true
 echo "  ✓ Udev rules removed"
 

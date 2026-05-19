@@ -116,6 +116,7 @@ fi
 # [4/8] Remove udev rules
 echo "[4/8] Removing udev rules..."
 sudo rm -f /etc/udev/rules.d/90-hide-ipu6-v4l2.rules
+sudo rm -f /etc/udev/rules.d/70-camera-relay-capabilities.rules
 sudo udevadm control --reload-rules 2>/dev/null || true
 echo "  ✓ Udev rules removed"
 

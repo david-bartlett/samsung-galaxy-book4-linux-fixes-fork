@@ -922,6 +922,23 @@ if [[ -d "$RELAY_DIR" ]]; then
     echo "v4l2loopback" | sudo tee /etc/modules-load.d/v4l2loopback.conf > /dev/null
     echo "  ✓ Installed v4l2loopback autoload (/etc/modules-load.d/v4l2loopback.conf)"
 
+    # Chromium/Chrome enumerate V4L2 cameras through udev and only list
+    # devices whose ID_V4L_CAPABILITIES udev property contains ":capture:".
+    # v4l_id (60-persistent-v4l.rules) tags the node ONCE at device creation
+    # — while the relay monitor holds the writer fd and no capture format is
+    # negotiated yet — so the property can come up without ":capture:" and
+    # Chrome never lists the camera (even though it streams capture fine, and
+    # libcamera/PipeWire apps like Cheese/Firefox work). Force the capture
+    # capability for the relay node so Chrome enumerates it. (issue #54)
+    sudo tee /etc/udev/rules.d/70-camera-relay-capabilities.rules > /dev/null << 'EOF'
+# Force ID_V4L_CAPABILITIES so Chromium/Chrome's udev-based V4L2 camera
+# enumeration lists the Camera Relay loopback. Runs after 60-persistent-v4l.
+SUBSYSTEM=="video4linux", ATTR{name}=="Camera Relay", ENV{ID_V4L_CAPABILITIES}=":capture:"
+EOF
+    sudo udevadm control --reload-rules
+    sudo udevadm trigger --action=change --subsystem-match=video4linux
+    echo "  ✓ Installed Camera Relay udev capabilities rule (Chrome/Chromium fix)"
+
     # Rebuild initramfs so it picks up the new v4l2loopback config.
     # Without this, v4l2loopback may load from initramfs with stale
     # defaults (e.g. "OBS Virtual Camera") before /etc/modprobe.d/ is read.

@@ -271,13 +271,19 @@ camera-relay enable-persistent
 
 ### Chromium browser doesn't show camera
 
-Chrome/Chromium/Brave/Edge should see the camera through the V4L2 camera relay without any special flags. Make sure the relay is running:
+Chrome/Chromium/Brave/Edge see the camera through the **V4L2 camera relay**, not PipeWire. Make sure the relay is running:
 ```bash
 camera-relay status
 camera-relay enable-persistent --yes  # if not enabled
 ```
 
-If the camera still doesn't appear, you can try enabling `chrome://flags/#enable-webrtc-pipewire-camera` — but note this flag can break camera access in some browsers (especially Edge). Disable it if it causes problems.
+**Keep `chrome://flags/#enable-webrtc-pipewire-camera` DISABLED.** On Ubuntu/Zorin (Noble) the PipeWire camera path goes through the system libcamera 0.2.0, which has no IPU6 support — enabling the flag makes Chrome use that broken path and bypass the working V4L2 relay entirely (the camera will *not* be found).
+
+If Chrome shows "camera not found" even with the relay streaming and the flag off: Chromium enumerates V4L2 cameras through **udev** and only lists devices whose `ID_V4L_CAPABILITIES` property contains `:capture:`. `v4l_id` tags the loopback once at device creation — before any capture format is negotiated — so the property can come up without `:capture:` and Chrome silently filters the device out (libcamera/PipeWire apps like Cheese and Firefox are unaffected, which is why they still work). The installer ships a udev rule (`/etc/udev/rules.d/70-camera-relay-capabilities.rules`) that forces the capture capability for the relay node. Check it with:
+```bash
+udevadm info /dev/videoN | grep -i ID_V4L_CAPABILITIES   # the "Camera Relay" node
+```
+After installing, **fully quit Chrome** (`pkill -9 -f chrome` — Chrome caches its device list and keeps a background process) before relaunching.
 
 ### Black screen in apps / "v4l2loopback ... não é um dispositivo de saída"
 
